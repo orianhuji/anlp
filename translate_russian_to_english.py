@@ -102,5 +102,5 @@ for record in tqdm(original_ds['data']):
 print(f'number of invalid translations => {invalid_counter}')
 original_ds['invalid_cnt'] = invalid_counter
 
-with open(f'./data/translated_{TRANSLATION_MODEL_CACHE}.json', 'w', encoding='utf-8') as translated_ds_f:
+with open(f'./data/translated_{TRANSLATION_MODEL_CACHE.replace("/", "_")}.json', 'w', encoding='utf-8') as translated_ds_f:
     translated_ds_f.write(json.dumps(original_ds, indent=4, ensure_ascii=False))
