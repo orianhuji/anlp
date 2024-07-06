@@ -39,7 +39,7 @@ for i, row in df.iterrows():
     G.add_node(answer_node, label=row['answer'])
     G.add_edge(question_node, answer_node)
 
-# Optional: Create edges based on shared words
+# Create edges based on shared words
 def add_shared_word_edges(G, df):
     for i, row1 in df.iterrows():
         for j, row2 in df.iterrows():
@@ -50,7 +50,7 @@ def add_shared_word_edges(G, df):
 
 add_shared_word_edges(G, df)
 
-# Optional: Create edges based on semantic similarity using TF-IDF and cosine similarity
+# Create edges based on semantic similarity using TF-IDF and cosine similarity
 def add_similarity_edges(G, texts, threshold=0.2):
     vectorizer = TfidfVectorizer().fit_transform(texts)
     vectors = vectorizer.toarray()
