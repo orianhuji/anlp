@@ -1,7 +1,7 @@
 import torch
 import json
 import os.path
-
+import pickle
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
@@ -14,17 +14,17 @@ if 'nllb' in TRANSLATION_MODEL:
     tokenizer = AutoTokenizer.from_pretrained(TRANSLATION_MODEL)
 
     pipe = pipeline('translation', model=model, tokenizer=tokenizer, src_lang='rus_Cyrl', tgt_lang='eng_Latn',
-                    max_length=512, device_map="auto")
+                    max_length=1024, device_map="auto")
 else:
     pipe = pipeline("text-generation", model=TRANSLATION_MODEL, torch_dtype=torch.bfloat16, device_map="auto")
 
-if os.path.exists('../data/translation_cache.json'):
-    with open('../data/translation_cache.json', 'r', encoding='utf-8') as translation_f:
+if os.path.exists('./original_proj/data/translation_cache.json'):
+    with open('./original_proj/data/translation_cache.json', 'r', encoding='utf-8') as translation_f:
         TRANSLATION_CACHE = json.loads(translation_f.read() or '{}')
         TRANSLATION_CACHE[TRANSLATION_MODEL] = TRANSLATION_CACHE.get(TRANSLATION_MODEL, {})
         TRANSLATION_CACHE[TRANSLATION_MODEL_CACHE] = TRANSLATION_CACHE.get(TRANSLATION_MODEL_CACHE, {})
 else:
-    TRANSLATION_CACHE = {TRANSLATION_MODEL: {}}
+    TRANSLATION_CACHE = {TRANSLATION_MODEL: {}, TRANSLATION_MODEL_CACHE: {}}
 
 SPLIT_BY = '\nEnglish:<|im_end|>\n<|im_start|>assistant\n'
 
@@ -50,7 +50,7 @@ def translate(input_txt):
         outputs = fix_translation(outputs[0]["generated_text"])
 
     TRANSLATION_CACHE[TRANSLATION_MODEL_CACHE][input_txt] = outputs
-    with open('../data/translation_cache.json', 'w', encoding='utf-8') as translation_f:
+    with open('./original_proj/data/translation_cache.json', 'w', encoding='utf-8') as translation_f:
         translation_f.write(json.dumps(TRANSLATION_CACHE, indent=4, ensure_ascii=False))
     return TRANSLATION_CACHE[TRANSLATION_MODEL_CACHE][input_txt]
 
@@ -70,37 +70,31 @@ def _tower_translate(input_txt):
     return outputs
 
 
-with open('../data/original.json', 'r', encoding='utf-8') as original_ds_f:
-    original_ds = json.loads(original_ds_f.read())
+original_ds = pickle.loads(open("./original_proj/data/squad_dataset.pkl","rb").read())
 
-invalid_counter = 0
-for record in tqdm(original_ds['data']):
-    record['title_eng'] = translate(record['title'])
+for ds in ['train', 'validation']:
+    invalid_counter = 0
+    for record in tqdm(original_ds[ds]):
 
-    for paragraph in tqdm(record['paragraphs']):
-        # translate short sequences and only then long ones, in order to allow (almost) maximum replacements
-        answers_to_translate = [an['text'] for qa in paragraph['qas'] for an in qa['answers']]
-        answers_to_translate = sorted(answers_to_translate, key=lambda x: len(x))
-        for answer_to_translate in answers_to_translate:
-            translate(answer_to_translate)
+        record['answers']['text_en'] = [translate(t) for t in record['answers']['text']]
+        record['context_en'] = ''
+        last_idx = 0
+        for i in range(len(record['answers']['text_en'])):
+            record['context_en'] += translate(record['context'][last_idx:record['context'].find(record['answers']['text'][i])])
+            record['context_en'] += ' ' + record['answers']['text_en'][i]
+            last_idx = record['context'].find(record['answers']['text'][i]) + len(record['answers']['text_en'][i])
 
-        for qa in paragraph['qas']:
-            qa['question_en'] = translate(qa['question'])
-            for answer in qa['answers']:
-                answer['text_en'] = translate(answer['text'])
-        paragraph['context_en'] = translate(paragraph['context'])
+        record['context_en'] += translate(record['context'][last_idx:])
+        record['question_en'] = translate(record['question'])
+        
+        record['answers']['answer_start_en'] = []
+        for i in range(len(record['answers']['text'])):
+            if record['answers']['text_en'][i] not in record['context_en']:
+                invalid_counter += 1
+                record['answers']['answer_start_en'].append(0)
+            else:
+                record['answers']['answer_start_en'].append(record['context_en'].find(record['answers']['text_en'][i]))
+    print("ds", ds, "invalid_counter", invalid_counter)
 
-        for qa in paragraph['qas']:
-            for answer in qa['answers']:
-                if not qa['is_impossible']:
-                    answer['answer_start_en'] = paragraph['context_en'].find(answer['text_en'])
-                    if answer['answer_start_en'] != -1:
-                        answer['answer_end_en'] = answer['answer_start_en'] + len(answer['text_en'])
-                    else:
-                        invalid_counter += 1
-
-print(f'number of invalid translations => {invalid_counter}')
-original_ds['invalid_cnt'] = invalid_counter
-
-with open(f'../data/translated_{TRANSLATION_MODEL_CACHE.replace("/", "_")}.json', 'w', encoding='utf-8') as translated_ds_f:
+with open(f'./original_proj/data/translated_{TRANSLATION_MODEL_CACHE.replace("/", "_")}.json', 'w', encoding='utf-8') as translated_ds_f:
     translated_ds_f.write(json.dumps(original_ds, indent=4, ensure_ascii=False))
