@@ -8,15 +8,18 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import nltk
 
-from dataset_stats import datasets
+from dataset_stats import extract_jsons
 
 # Download stopwords if not already available
 nltk.download('stopwords')
 nltk.download('punkt')
 russian_stopwords = set(stopwords.words('russian'))
 
+datasets = {'short':  ([], [], [])}
+extract_jsons(datasets, is_translated=False)
+
 # Load your dataset
-df = pd.DataFrame({'question': datasets['short'][0], 'answer': datasets['short'][1]})
+df = pd.DataFrame({'question': datasets['short'][1], 'answer': datasets['short'][2]})
 
 # Preprocess the text
 def preprocess_text(text):
