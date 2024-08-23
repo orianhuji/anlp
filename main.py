@@ -1,16 +1,16 @@
-# This is a sample Python script.
+from src.dataset_stats import extract_jsons, print_stat, max_tokens, min_tokens
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+def main():
+    datasets = {'original': ([], [], [])}
+    translated_dataset = {'translated_manually': ([], [], []),
+                          'translated_Unbabel_TowerInstruct-v0.1_substring_logic': ([], [], [])}
+    extract_jsons(datasets, is_translated=False)
+    extract_jsons(translated_dataset, is_translated=True)
 
+    print_stat(datasets, max_tokens, "Maximum", "tokens")
+    print_stat(datasets, min_tokens, "Minimum", "tokens")
+    print_stat(translated_dataset, max_tokens, "Maximum", "tokens")
+    print_stat(translated_dataset, min_tokens, "Minimum", "tokens")
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    main()

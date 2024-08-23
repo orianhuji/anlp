@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from transformers import BertTokenizerFast 
 import torch
 
-from count_dataset_stats import datasets
+from dataset_stats import datasets
 
 tokenizer = BertTokenizerFast.from_pretrained('bert-base-multilingual-cased')
 

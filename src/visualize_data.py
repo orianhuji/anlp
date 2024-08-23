@@ -8,7 +8,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import nltk
 
-from count_dataset_stats import datasets
+from dataset_stats import datasets
 
 # Download stopwords if not already available
 nltk.download('stopwords')
